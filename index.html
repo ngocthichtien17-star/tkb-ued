@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xếp Thời Khóa Biểu — TKB UED &amp; HUST</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-logo" aria-hidden="true">📅</div>
+      <div class="brand-text">
+        <h1>Công cụ Xếp Thời Khóa Biểu</h1>
+        <p id="datasetSubtitle" class="dataset-subtitle">Đang tải dữ liệu học kỳ...</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="btn btn-outline file-upload-label" for="excelFileInput" title="Tải lên file Excel TKB (.xlsx)">
+        <span>📂 Tải file Excel (.xlsx)</span>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden>
+      </label>
+      <button type="button" id="resetDefaultDataBtn" class="btn btn-outline hidden" title="Quay về dữ liệu mặc định">
+        ↺ Dữ liệu mặc định
+      </button>
+      <button type="button" id="openRegModalBtn" class="btn btn-secondary" title="Xem mã lớp &amp; code đăng ký">
+        📋 Xem thông tin các lớp
+      </button>
+    </div>
+  </header>
+
+  <!-- Toast / Alert Notification Area -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Main Workspace Layout -->
+  <div class="app-workspace">
+    <!-- Left Sidebar: Search, Selected Courses, Filters, Solver -->
+    <aside class="sidebar" id="sidebarPanel">
+      <!-- Upload Dropzone & Error Banner -->
+      <div id="dropZone" class="drop-zone" title="Kéo thả file Excel (.xlsx) vào đây để tải lịch học mới">
+        Kéo &amp; thả file Excel TKB (.xlsx) vào đây nếu muốn đổi dữ liệu
+      </div>
+      <div id="parserErrorBanner" class="alert-banner alert-error hidden" role="alert"></div>
+
+      <!-- F07: Course Autocomplete Search -->
+      <section class="panel-section">
+        <div class="section-header">
+          <h2>1. Tìm &amp; Chọn Học Phần</h2>
+          <span id="courseCountBadge" class="badge badge-neutral">0 HP</span>
+        </div>
+        <div class="search-wrapper">
+          <input
+            type="text"
+            id="courseSearchInput"
+            class="search-input"
+            placeholder="Nhập mã HP hoặc tên môn (VD: Giáo dục thể chất, 00101265)..."
+            autocomplete="off"
+            aria-label="Tìm kiếm học phần"
+            aria-expanded="false"
+            aria-controls="searchDropdown"
+          >
+          <button type="button" id="clearSearchBtn" class="clear-search-btn hidden" aria-label="Xóa tìm kiếm">✕</button>
+          <ul id="searchDropdown" class="search-dropdown hidden" role="listbox"></ul>
+        </div>
+
+        <!-- F09: Recent Courses Quick-Add -->
+        <div id="recentCoursesWrapper" class="recent-courses-wrapper hidden">
+          <span class="recent-label">Tìm gần đây:</span>
+          <div id="recentCoursesList" class="recent-chips"></div>
+        </div>
+      </section>
+
+      <!-- F10 & F11: Selected Courses & Credit Counter -->
+      <section class="panel-section">
+        <div class="section-header">
+          <h2>2. Học phần đã chọn</h2>
+          <button type="button" id="clearAllCoursesBtn" class="btn-link danger hidden">Xóa tất cả</button>
+        </div>
+        <div id="creditCounter" class="credit-counter">
+          Tổng số tín chỉ hiện tại: 0 tín chỉ / 0 môn
+        </div>
+        <div id="selectedCoursesGrid" class="selected-courses-grid">
+          <div class="empty-state-small">Chưa chọn học phần nào. Hãy tìm và thêm môn học ở trên.</div>
+        </div>
+      </section>
+
+      <!-- F15: 14-Session Preferred Days-Off Matrix -->
+      <section class="panel-section">
+        <div class="section-header">
+          <h2>3. Chọn buổi nghỉ mong muốn</h2>
+          <button type="button" id="resetDaysOffBtn" class="btn-link">Bỏ chọn</button>
+        </div>
+        <div class="days-off-table-wrap">
+          <table class="days-off-table" aria-label="Chọn buổi nghỉ mong muốn">
+            <thead>
+              <tr>
+                <th>Buổi</th>
+                <th>T2</th>
+                <th>T3</th>
+                <th>T4</th>
+                <th>T5</th>
+                <th>T6</th>
+                <th>T7</th>
+                <th>CN</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="session-row-label">Sáng</td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T2_SANG" aria-label="Nghỉ sáng Thứ 2"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T3_SANG" aria-label="Nghỉ sáng Thứ 3"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T4_SANG" aria-label="Nghỉ sáng Thứ 4"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T5_SANG" aria-label="Nghỉ sáng Thứ 5"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T6_SANG" aria-label="Nghỉ sáng Thứ 6"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T7_SANG" aria-label="Nghỉ sáng Thứ 7"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="CN_SANG" aria-label="Nghỉ sáng Chủ Nhật"></td>
+              </tr>
+              <tr>
+                <td class="session-row-label">Chiều</td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T2_CHIEU" aria-label="Nghỉ chiều Thứ 2"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T3_CHIEU" aria-label="Nghỉ chiều Thứ 3"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T4_CHIEU" aria-label="Nghỉ chiều Thứ 4"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T5_CHIEU" aria-label="Nghỉ chiều Thứ 5"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T6_CHIEU" aria-label="Nghỉ chiều Thứ 6"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="T7_CHIEU" aria-label="Nghỉ chiều Thứ 7"></td>
+                <td><input type="checkbox" class="dayoff-cb" data-session="CN_CHIEU" aria-label="Nghỉ chiều Chủ Nhật"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- F16, F21, F22, F23: Solver Options & Generate Button -->
+      <section class="panel-section">
+        <div class="section-header">
+          <h2>4. Tùy chọn &amp; Sắp xếp</h2>
+        </div>
+        <div class="solver-options">
+          <label class="checkbox-option">
+            <input type="checkbox" id="allowAlternatingWeeksCb">
+            <span>Cho phép xếp lớp học xen kẽ tuần</span>
+          </label>
+          <label class="checkbox-option">
+            <input type="checkbox" id="avoidBackToBackCb">
+            <span>Tránh xếp các tiết học liên tiếp (không có giờ nghỉ)</span>
+          </label>
+
+          <div class="form-row">
+            <label for="sortBySelect">Tiêu chí sắp xếp:</label>
+            <select id="sortBySelect" class="form-select">
+              <option value="Random">Ngẫu nhiên (Random)</option>
+              <option value="Free Mornings">Nhiều buổi sáng nghỉ nhất</option>
+              <option value="Free Afternoons">Nhiều buổi chiều nghỉ nhất</option>
+              <option value="Total Free">Tổng số buổi nghỉ nhiều nhất</option>
+              <option value="Free Days">Nhiều ngày nghỉ trọn vẹn nhất</option>
+              <option value="Morning Hours">Ít giờ học buổi sáng nhất</option>
+              <option value="Afternoon Hours">Ít giờ học buổi chiều nhất</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label for="maxResultsSelect">Giới hạn số phương án:</label>
+            <select id="maxResultsSelect" class="form-select">
+              <option value="10">10 phương án</option>
+              <option value="1000000" selected>1.000.000 phương án</option>
+              <option value="10000000">10.000.000 phương án</option>
+              <option value="Infinity">Không giới hạn</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button" id="generateBtn" class="btn btn-primary btn-block">
+          🔍 Tìm thời khóa biểu
+        </button>
+      </section>
+    </aside>
+
+    <!-- Main Content: Diagnostics, Registration Codes, Toolbar, Weekly Grid -->
+    <main class="main-panel">
+      <!-- F24: Conflict Diagnostics Banner -->
+      <div id="diagnosticBanner" class="diagnostic-banner hidden" role="alert">
+        <div class="diagnostic-icon">⚠️</div>
+        <div class="diagnostic-content">
+          <div id="diagnosticTitle" class="diagnostic-title"></div>
+          <div id="diagnosticDetails" class="diagnostic-details"></div>
+          <div id="diagnosticCourses" class="diagnostic-courses"></div>
+        </div>
+      </div>
+
+      <!-- F30: Registration Code Summary Bar -->
+      <section class="reg-summary-bar" id="regCodeBar">
+        <div class="reg-summary-left">
+          <span class="reg-summary-label">Mã lớp phương án hiện tại:</span>
+          <div id="regCodesList" class="reg-codes-list">
+            <span class="muted-text">Chưa có phương án nào</span>
+          </div>
+        </div>
+        <div class="reg-summary-actions">
+          <button type="button" id="copyCommaBtn" class="btn btn-sm btn-outline" disabled title="Sao chép mã lớp ngăn cách bởi dấu phẩy">
+            📋 Copy (dấu phẩy)
+          </button>
+          <button type="button" id="copyNewlineBtn" class="btn btn-sm btn-outline" disabled title="Sao chép mỗi mã lớp 1 dòng">
+            📄 Copy (xuống dòng)
+          </button>
+        </div>
+      </section>
+
+      <!-- Controls Toolbar: F33 Pagination, F32 Zoom, F31 Customizer, F34/F35 Exports -->
+      <section class="grid-toolbar">
+        <!-- Pagination (F33) -->
+        <div class="pagination-controls" id="paginationControls">
+          <button type="button" id="prevPageBtn" class="btn btn-sm btn-outline" disabled>◀ 1 kết quả trước</button>
+          <div class="page-jump-wrap">
+            <span>Trang</span>
+            <input type="number" id="pageJumpInput" class="page-jump-input" min="1" value="1" disabled aria-label="Số trang">
+            <span id="totalPagesLabel">/ 0</span>
+          </div>
+          <button type="button" id="nextPageBtn" class="btn btn-sm btn-outline" disabled>1 kết quả sau ▶</button>
+          <button type="button" id="resetPageBtn" class="btn btn-sm btn-outline" disabled title="Quay về trang 1">⏮ Trang 1</button>
+        </div>
+
+        <!-- Metrics Badge -->
+        <div id="activeMetricsBadge" class="metrics-badge hidden"></div>
+
+        <!-- Zoom & Display & Export -->
+        <div class="toolbar-right">
+          <!-- F32: Zoom Slider -->
+          <div class="zoom-control" title="Phóng to / Thu nhỏ bảng thời khóa biểu">
+            <label for="zoomSlider">Thu phóng:</label>
+            <input type="range" id="zoomSlider" min="0.5" max="1.5" step="0.1" value="1.0">
+            <span id="zoomValueLabel">100%</span>
+            <button type="button" id="resetZoomBtn" class="btn-link" title="Đặt lại 100%">Reset</button>
+          </div>
+
+          <!-- F31: Display Customizer Trigger -->
+          <button type="button" id="openCustomizerBtn" class="btn btn-sm btn-outline">
+            ⚙️ Tùy chỉnh hiển thị
+          </button>
+
+          <!-- F34 & F35: Export Buttons -->
+          <div class="export-buttons">
+            <button type="button" id="exportPngBtn" class="btn btn-sm btn-success" disabled>🖼️ Xuất PNG</button>
+            <button type="button" id="exportExcelBtn" class="btn btn-sm btn-success" disabled>📊 Xuất Excel</button>
+            <button type="button" id="exportIcalBtn" class="btn btn-sm btn-info" disabled>📅 Xuất iCal</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- F31: Inline/Collapsible Grid Display Customizer Panel -->
+      <section id="customizerPanel" class="customizer-panel hidden">
+        <label class="checkbox-option">
+          <input type="checkbox" id="prefShowRoom" checked>
+          <span>Hiển thị phòng học</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="prefShowWeeks">
+          <span>Hiển thị tuần học</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="prefAdaptiveFont" checked>
+          <span>Cỡ chữ tự động (Adaptive Font)</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" id="prefHideWeekend">
+          <span>Ẩn Thứ 7 &amp; Chủ Nhật</span>
+        </label>
+      </section>
+
+      <!-- F25-F28: Interactive Weekly Timetable Grid -->
+      <section class="timetable-scroll-container" id="timetableScrollContainer">
+        <div id="timetableGridWrapper" class="timetable-grid-wrapper">
+          <div id="timetableGrid" class="timetable-grid font-adaptive">
+            <!-- Dynamically rendered by js/ui.js -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- F13: Specific Class Selection Modal -->
+  <div id="classSelectModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="classSelectModalTitle">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3 id="classSelectModalTitle">Chọn cụ thể các lớp</h3>
+          <p id="classSelectModalSubtitle" class="modal-subtitle"></p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal="classSelectModal" aria-label="Đóng">✕</button>
+      </div>
+      <div class="modal-toolbar">
+        <button type="button" id="modalSelectAllBtn" class="btn btn-sm btn-primary">✓ Chọn tất cả</button>
+        <button type="button" id="modalDeselectAllBtn" class="btn btn-sm btn-outline">✗ Xóa tất cả</button>
+        <span id="modalSelectedCount" class="modal-count-label"></span>
+      </div>
+      <div id="classSelectModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="classSelectModal">Xong</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- F20: Real-Time Progress Dialog -->
+  <div id="progressModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="progressModalTitle">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <h3 id="progressModalTitle">Đang xếp thời khóa biểu...</h3>
+      </div>
+      <div class="modal-body">
+        <div class="progress-bar-track">
+          <div id="progressBarFill" class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+        <div class="progress-stats">
+          <span>Đã duyệt: <strong id="progressSearchedCount">0</strong> tổ hợp</span>
+          <span>Tìm thấy: <strong id="progressFoundCount">0</strong> phương án</span>
+          <span id="progressPercentLabel">0%</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="stopSearchBtn" class="btn btn-danger">⏹ Dừng tìm kiếm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- F29: Class Detail Modal -->
+  <div id="classDetailModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="classDetailModalTitle">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <h3 id="classDetailModalTitle">Chi tiết lớp học</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="classDetailModal" aria-label="Đóng">✕</button>
+      </div>
+      <div id="classDetailModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="classDetailModal">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- F30: Registration Codes Helper Modal -->
+  <div id="regCodesModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="regCodesModalTitle">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3 id="regCodesModalTitle">Thông tin các lớp &amp; Mã đăng ký</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="regCodesModal" aria-label="Đóng">✕</button>
+      </div>
+      <div id="regCodesModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" id="modalCopyCommaBtn" class="btn btn-outline">📋 Copy (dấu phẩy)</button>
+        <button type="button" id="modalCopyNewlineBtn" class="btn btn-outline">📄 Copy (xuống dòng)</button>
+        <button type="button" class="btn btn-primary" data-close-modal="regCodesModal">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Offline Standalone Scripts (Zero CDN Dependencies) -->
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="lib/html2canvas.min.js"></script>
+  <script src="js/default_data.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/scheduler.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
